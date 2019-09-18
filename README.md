@@ -7,5 +7,6 @@ or
 		
 or
 
-	git clone https://github.com/zapelin-media/client.git
-	sh client/install.sh
+	git clone https://github.com/zapelin-media/client.git && sh client/install.sh
+	
+
