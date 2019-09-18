@@ -1,6 +1,7 @@
 # Installation 
 
 	curl install.zapelin.com | sh
+
 or
 
 	wget -qO - install.zapelin.com | sh
