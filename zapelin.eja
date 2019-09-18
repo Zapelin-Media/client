@@ -1,0 +1,272 @@
+-- Copyright (C) 2019 by Ubaldo Porcheddu <ubaldo@zapelin.com>
+
+
+eja.lib.zmiStart='ejaZmiStart'
+eja.lib.zmiStop='ejaZmiStop'
+eja.lib.zmiInstall='ejaZmiInstall'
+eja.lib.zmiConfigure='ejaZmiConfigure'
+eja.help.zmiStart='launch a zmi instance {all}'
+eja.help.zmiStop='stop a zmi instance {all}'
+eja.help.zmiCard='zmi card number {0}'
+eja.help.zmiCode='zmi card code'
+eja.help.zmiInstall='install the Zapelin Media Client'
+eja.help.zmiConfigure='zmi configuration'
+
+
+eja.zmi={}
+eja.zmi.timeout=86400;
+eja.zmi.version="190918";
+
+
+function ejaZmiInstall()
+ if not ejaFileStat('/usr/bin/apt-get') then
+  ejaError('This installation does only work on Debian or a derivate.')
+ else
+  if not ejaFileStat('/sys/kernel/debug/usb') then
+   ejaError('You need root/sudo privileges to execute this procedure.')
+  else
+   ejaExecute([[(
+apt-get update
+apt-get -y install build-essential
+apt-get -y install linux-headers-$(uname -r)
+apt-get -y install curl
+apt-get -y install git
+mkdir /tmp/tv
+
+cd /tmp/tv
+
+git clone https://github.com/zapelin-media/it950x_driver.git
+cd it950x_driver
+make && make install
+cd /tmp/tv
+rm -Rf /tmp/tv/it950x_driver
+
+cd /tmp/tv
+git clone https://github.com/zapelin-media/it951x_driver.git
+cd it951x_driver
+make && make install
+cd /tmp/tv
+rm -Rf /tmp/tv/it951x_driver
+
+depmod 
+modprobe usb-it950x
+modprobe usb-it951x
+
+cd /tmp/tv
+git clone https://github.com/zapelin-media/zmi.git
+cd zmi
+make
+cp zmi /usr/bin/zmi
+chmod +x /usr/bin/zmi
+cd /tmp/tv
+rm -Rf /tmp/tv/zmi
+) 2>/dev/null]])
+  end
+  if not ejaFileStat('/etc/eja/eja.init') then
+   ejaSetup()
+   ejaFileWrite('/etc/eja/eja.init','eja.opt.zmiStart=1;eja.opt.logLevel=3;eja.opt.logFile="/tmp/eja.log";')
+  else
+   ejaFileAppend('/etc/eja/eja.init','eja.opt.zmiStart=1;')
+  end
+ ejaSleep(30)
+ ejaZmiConfigure()
+ end
+end
+
+
+function ejaZmiSerial(n)
+ local mac=table.pack(ejaString(ejaGetMAC()):gsub('%:',''):upper():byte(1,12))
+ local serial=''
+ if ejaNumber(n) > 0 then
+  local x=mac[n]
+  if x >=65 and x<=70 then x=x+10 end
+  if x >=48 and x<=57 then x=x+23 end
+  mac[n]=x
+ end
+ for i=1,12 do serial=serial..string.char(mac[i]) end
+ return serial
+end 
+
+
+
+function ejaZmiConfigure()
+  local serial={}
+  local i=0
+  for k,v in next,ejaDirList('/dev/') do
+   if v:match('usb%-it95') then 
+    serial[i]=ejaZmiSerial(i)
+    ejaInfo('New card detected, serial: %s',serial[i])
+    i=i+1
+   end
+  end
+  ejaJsonFileWrite('/etc/eja/eja.dvb',serial)
+end
+
+
+function ejaZmiStart()
+ local mac=ejaZmiSerial(0);
+ if eja.opt.zmiCode then
+  ejaZmiRun(eja.opt.zmiCard, eja.opt.zmiCode)
+ else
+  local a=ejaJsonFileRead('/etc/eja/eja.dvb')
+  if a then
+   for k,v in next,a do
+    if ejaNumber(k) == 0 then
+     mac=ejaString(v)
+    end
+    if ejaFork()==0 then 
+     ejaPidWrite(ejaSprintf('zmi.out.%s',k));
+     ejaZmiRun(k,v)   
+     os.exit(); 
+    end
+   end 
+   ejaInfo('[zmi] log daemon start')
+   while true do 
+    ejaZmiLogUpdate(mac)
+    ejaSleep(100)
+   end
+  else
+   ejaError('Card configuration missing, please run: eja --zmi-configure') 
+  end
+ end
+end
+
+
+function ejaZmiStop(card)
+ if card then
+  ejaPidKill('zmi.out.'..card);
+ else
+  for k,v in next,ejaDirTable(eja.pathLock) do
+   if v:match('^eja.pid.zmi.out') then
+    ejaPidKill(v:match('^eja.pid.(.+)'))
+   end
+  end
+ end
+end
+
+
+function ejaZmiRun(card,hash)
+ local card=card or eja.opt.zmiCard or 0
+ local hash=hash or eja.opt.zmiCode
+ local mode=-1;
+ if ejaString(hash) ~= '' then
+  if ejaFileStat('/dev/usb-it950x'..ejaNumber(card)) then 
+   mode=0 
+  elseif ejaFileStat('/dev/usb-it951x'..ejaNumber(card)) then 
+   mode=1 
+  end
+  if mode >= 0 then
+   ejaInfo('[zmi] starting card %s with code %s',card,hash)
+   while true do
+    local jj=ejaWebGet('http://api.zapelin.com/?zmi='..hash) 
+    if jj then
+     local a=ejaJsonDecode(jj)
+     if a and a.vm then 
+      loadstring(ejaVmImport(a.vm))()
+     end
+     if a and a.host and a.port then
+      ejaDebug('[zmi] card %d injecting',card)     
+      local cmdGet
+      local cmdUrl
+      local cmdZip
+      local cmdOut
+      if ejaString(a.proxy) ~= "" then
+       cmdUrl=ejaSprintf('http://%s/proxy.zmx?host=%s&port=%s&hash=%s',a.proxy, a.host, a.port, hash)
+      else
+       cmdUrl=ejaSprinf('http://%s:%s/mux.zmx?hash=%s',a.host, a.port, hash)
+      end
+      if ejaFileStat('/usr/bin/curl') then
+       cmdGet='curl -s --compressed --speed-limit 1000000 '      
+       cmdZip=''
+      else
+       cmdGet='wget -qO - '
+       cmdZip=' | gzip -d | '
+      end
+      cmdOut=ejaSprintf('zmi %s %s %s %s %s %s %s %s 0 10', card, mode, ejaNumber(a.frequency)/1000, ejaNumber(a.bandwidth)/1000, a.constellation, a.codeRate, a.guardInterval, a.transmissionMode)
+      ejaExecute('%s "%s" %s | %s', cmdGet, cmdUrl, cmdZip, cmdOut)
+     else
+      ejaWarn('[zmi] card %d api configuration empty',card)
+     end  
+    else
+     ejaError('[zmi] card %d api retrieval problem',card)
+    end
+    ejaSleep(10)
+   end
+  else
+   ejaError('[zmi] card %d not available',card)
+  end
+ else
+  ejaError('[zmi] card %d code missing',card)
+ end
+end
+
+
+function ejaZmiLogUpdate(mac)
+ local a={}
+ local y=0
+ local last=ejaFileRead(eja.pathLock..'eja.log.update') or 0
+ for line in io.lines(eja.opt.logFile) do
+  y=y+1
+  if y > ejaNumber(last) then
+   a[#a+1]=line
+  end
+ end
+ if #a > 0 then
+  ejaFileWrite(eja.pathLock..'eja.log.update',y)
+  ejaTrace('[zmi] remote log update')
+  return ejaJsonPost('http://api.zapelin.com/?log='..mac,a)
+ else
+  return {}
+ end
+end
+
+
+function ejaBoxZmiInit()
+ if ejaString(eja.opt.logFile) == "/dev/stderr" then eja.opt.logFile="/tmp/eja.log" end
+ if ejaNumber(eja.opt.logLevel) < 3 then eja.opt.logLevel=3 end
+ ejaExecute([[
+dmesg -n 2
+echo 1 > /proc/sys/kernel/panic_on_rcu_stall
+mount -t debugfs none /sys/kernel/debug
+rm /etc/init.d/S50telnet 
+modprobe -l | awk -F '/' '/ethernet/{print "modprobe "$NF}' | sh
+modprobe isofs
+modprobe vfat
+modprobe tun
+modprobe brcmfmac 
+modprobe usb-it950x
+modprobe usb-it951x
+mount -o noatime,ro /dev/sda1 /mnt
+mount -o noatime,ro /dev/mmcblk0p1 /mnt
+if [ -e /mnt/eja ]; then
+ cp -r /mnt/eja /etc/eja
+fi
+if [ -e /mnt/eja/client.key ]; then
+ mkdir /etc/openvpn; 
+ cp /mnt/eja/client.* /mnt/eja/*.crt /etc/openvpn/; 
+ /etc/init.d/S60openvpn restart
+fi
+killall -9 udhcpc;
+killall -9 hostapd;
+killall -9 telnetd
+#killall -9 stunnel
+]])
+ local pwd=ejaFileRead('/etc/eja/eja.pwd')
+ if pwd then
+  local shadow=ejaFileRead('/etc/shadow')
+  if shadow then
+   ejaFileWrite('/etc/shadow',shadow:gsub('root%:.-\n','root:'..pwd:gsub('\n','')..':1:0:99999:7:::\n'))
+  end
+ end 
+ while true do
+  if ejaFileStat("/sys/class/net/eth0") then 
+   break 
+  else
+   ejaSleep(1)
+  end
+ end
+ ejaSleep(1)
+ ejaExecute('udhcpc -f -i eth0 -t 10 -T 5 -n -q -p %s 1>/dev/null',udhcpcPid)
+ ejaZmiConfigure()
+ ejaZmiStart() 
+end
