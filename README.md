@@ -1,2 +1,4 @@
-# client
-Installation procedure for Zapelin Media Client
+# Installation 
+
+		curl install.zapelin.com | sh
+
