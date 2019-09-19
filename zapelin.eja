@@ -206,7 +206,7 @@ function ejaZmiRun(card,hash)
        local aConstellation={'QPSK','QAM','QAM64'}
        local aTransmissionMode={'2k','8k','4k'}
        local aGuardInterval={'1/32','1/16','1/8','1/4'}
-       cmdOut=ejaSprintf('DtPlay /proc/self/fd/0 -l 1 -r %s -t 2111 -n %s -m RAW -mt DVBT -mf %s -mc %s -mC %s -mB %s -mT %s -mG %s', 
+       cmdOut=ejaSprintf('DtPlay /proc/self/fd/0 -l 1 -r %s -t 2111 -n %s -m 188 -mt DVBT -mf %s -mc %s -mC %s -mB %s -mT %s -mG %s', 
         a.rate,ejaNumber(card)+1, ejaNumber(a.frequency)/1000, aCodeRate[ejaNumber(a.codeRate)+1], aConstellation[ejaNumber(a.constellation)+1], ejaNumber(a.bandwidth)/1000, 
         aTransmissionMode[ejaNumber(a.transmissionMode)+1], aGuardInterval[ejaNumber(a.guardInterval)+1]
        )
