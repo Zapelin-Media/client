@@ -15,7 +15,7 @@ eja.help.zmiConfigure='zmi configuration'
 
 eja.zmi={}
 eja.zmi.timeout=86400;
-eja.zmi.version="190918";
+eja.zmi.version="190919";
 
 
 function ejaZmiInstall()
@@ -92,12 +92,10 @@ end
 function ejaZmiConfigure()
   local serial={}
   local i=0
-  for k,v in next,ejaDirList('/dev/') do
-   if v:match('usb%-it95') then 
-    serial[i]=ejaZmiSerial(i)
-    ejaInfo('New card detected, serial: %s',serial[i])
-    i=i+1
-   end
+  for k,v in next,ejaZmiCardMatrix() do
+   serial[i]=ejaZmiSerial(i)
+   ejaInfo('New card detected, model: %s, serial: %s',v,serial[i])
+   i=i+1
   end
   ejaJsonFileWrite('/etc/eja/eja.dvb',serial)
 end
@@ -145,16 +143,35 @@ function ejaZmiStop(card)
 end
 
 
+function ejaZmiCardMatrix() 
+ local a={}
+ local pciPath='/sys/bus/pci/devices'
+ for k,v in next,ejaDirTable(pciPath) do
+  if ejaString(ejaFileRead(pciPath..'/'..v..'/vendor')):lower():match('0x1a0e') and ejaString(ejaFileRead(pciPath..'/'..v..'/device')):lower():match('0x083f') then
+   a[#a+1]='DTA-2111'
+  end
+ end
+ for k,v in next,ejaDirList('/dev/') do
+  if v:match('usb%-it950x.$') then 
+   a[#a+1]='UT-100'
+  end
+  if v:match('usb%-it951x.$') then 
+   a[#a+1]='UT-200'
+  end
+ end
+ return a
+end
+
+
 function ejaZmiRun(card,hash)
  local card=card or eja.opt.zmiCard or 0
  local hash=hash or eja.opt.zmiCode
  local mode=-1;
  if ejaString(hash) ~= '' then
-  if ejaFileStat('/dev/usb-it950x'..ejaNumber(card)) then 
-   mode=0 
-  elseif ejaFileStat('/dev/usb-it951x'..ejaNumber(card)) then 
-   mode=1 
-  end
+  local cardMatrix=ejaZmiCardMatrix()
+  if ejaString(cardMatrix[card+1]) == 'UT-100' then mode=0 end
+  if ejaString(cardMatrix[card+1]) == 'UT-200' then mode=1 end
+  if ejaString(cardMatrix[card+1]) == 'DTA-2111' then mode=10 end
   if mode >= 0 then
    ejaInfo('[zmi] starting card %s with code %s',card,hash)
    while true do
@@ -165,7 +182,7 @@ function ejaZmiRun(card,hash)
       loadstring(ejaVmImport(a.vm))()
      end
      if a and a.host and a.port then
-      ejaDebug('[zmi] card %d injecting',card)     
+      ejaDebug('[zmi] card %d injecting',card)
       local cmdGet
       local cmdUrl
       local cmdZip
@@ -173,7 +190,7 @@ function ejaZmiRun(card,hash)
       if ejaString(a.proxy) ~= "" then
        cmdUrl=ejaSprintf('http://%s/proxy.zmx?host=%s&port=%s&hash=%s',a.proxy, a.host, a.port, hash)
       else
-       cmdUrl=ejaSprinf('http://%s:%s/mux.zmx?hash=%s',a.host, a.port, hash)
+       cmdUrl=ejaSprintf('http://%s:%s/mux.zmx?hash=%s',a.host, a.port, hash)
       end
       if ejaFileStat('/usr/bin/curl') then
        cmdGet='curl -s --compressed --speed-limit 1000000 '      
@@ -182,8 +199,21 @@ function ejaZmiRun(card,hash)
        cmdGet='wget -qO - '
        cmdZip=' | gzip -d | '
       end
-      cmdOut=ejaSprintf('zmi %s %s %s %s %s %s %s %s 0 10', card, mode, ejaNumber(a.frequency)/1000, ejaNumber(a.bandwidth)/1000, a.constellation, a.codeRate, a.guardInterval, a.transmissionMode)
-      ejaExecute('%s "%s" %s | %s', cmdGet, cmdUrl, cmdZip, cmdOut)
+      if mode < 10 then
+       cmdOut=ejaSprintf('zmi %s %s %s %s %s %s %s %s 0 10', card, mode, ejaNumber(a.frequency)/1000, ejaNumber(a.bandwidth)/1000, a.constellation, a.codeRate, a.guardInterval, a.transmissionMode)
+      else
+       local aCodeRate={'1/2','2/3','3/4','5/6','7/8'}
+       local aConstellation={'QPSK','QAM','QAM64'}
+       local aTransmissionMode={'2k','8k','4k'}
+       local aGuardInterval={'1/32','1/16','1/8','1/4'}
+       cmdOut=ejaSprintf('DtPlay /proc/self/fd/0 -l 1 -r %s -t 2111 -n %s -m RAW -mt DVBT -mf %s -mc %s -mC %s -mB %s -mT %s -mG %s', 
+        a.rate,ejaNumber(card)+1, ejaNumber(a.frequency)/1000, aCodeRate[ejaNumber(a.codeRate)+1], aConstellation[ejaNumber(a.constellation)+1], ejaNumber(a.bandwidth)/1000, 
+        aTransmissionMode[ejaNumber(a.transmissionMode)+1], aGuardInterval[ejaNumber(a.guardInterval)+1]
+       )
+      end
+      local cmd=ejaSprintf('%s "%s" %s | %s', cmdGet, cmdUrl, cmdZip, cmdOut)
+      ejaTrace('[zmi] cmd: %s', cmd)
+      ejaExecute(cmd)
      else
       ejaWarn('[zmi] card %d api configuration empty',card)
      end  
