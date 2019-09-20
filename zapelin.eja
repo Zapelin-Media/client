@@ -35,31 +35,22 @@ mkdir /tmp/tv
 
 cd /tmp/tv
 
-git clone https://github.com/zapelin-media/it950x_driver.git
-cd it950x_driver
-make && make install
+git clone https://github.com/zapelin-media/ite.git
+cd ite && ./install.sh
 cd /tmp/tv
-rm -Rf /tmp/tv/it950x_driver
+rm -Rf /tmp/tv/ite
 
 cd /tmp/tv
-git clone https://github.com/zapelin-media/it951x_driver.git
-cd it951x_driver
-make && make install
+git clone https://github.com/zapelin-media/dektec.git
+cd dektec && ./install.sh
 cd /tmp/tv
-rm -Rf /tmp/tv/it951x_driver
+rm -Rf /tmp/tv/dektec
 
 depmod 
 modprobe usb-it950x
 modprobe usb-it951x
+modprobe Dta
 
-cd /tmp/tv
-git clone https://github.com/zapelin-media/zmi.git
-cd zmi
-make
-cp zmi /usr/bin/zmi
-chmod +x /usr/bin/zmi
-cd /tmp/tv
-rm -Rf /tmp/tv/zmi
 ) 2>/dev/null]])
   end
   if not ejaFileStat('/etc/eja/eja.init') then
@@ -200,13 +191,13 @@ function ejaZmiRun(card,hash)
        cmdZip=' | gzip -d | '
       end
       if mode < 10 then
-       cmdOut=ejaSprintf('zmi %s %s %s %s %s %s %s %s 0 10', card, mode, ejaNumber(a.frequency)/1000, ejaNumber(a.bandwidth)/1000, a.constellation, a.codeRate, a.guardInterval, a.transmissionMode)
+       cmdOut=ejaSprintf('zapelinItePlay %s %s %s %s %s %s %s %s 0 10', card, mode, ejaNumber(a.frequency)/1000, ejaNumber(a.bandwidth)/1000, a.constellation, a.codeRate, a.guardInterval, a.transmissionMode)
       else
        local aCodeRate={'1/2','2/3','3/4','5/6','7/8'}
        local aConstellation={'QPSK','QAM','QAM64'}
        local aTransmissionMode={'2k','8k','4k'}
        local aGuardInterval={'1/32','1/16','1/8','1/4'}
-       cmdOut=ejaSprintf('DtPlay /proc/self/fd/0 -l 1 -r %s -t 2111 -n %s -m 188 -mt DVBT -mf %s -mc %s -mC %s -mB %s -mT %s -mG %s', 
+       cmdOut=ejaSprintf('zapelinDtPlay /proc/self/fd/0 -l 1 -r %s -t 2111 -n %s -m 188 -mt DVBT -mf %s -mc %s -mC %s -mB %s -mT %s -mG %s', 
         a.rate,ejaNumber(card)+1, ejaNumber(a.frequency)/1000, aCodeRate[ejaNumber(a.codeRate)+1], aConstellation[ejaNumber(a.constellation)+1], ejaNumber(a.bandwidth)/1000, 
         aTransmissionMode[ejaNumber(a.transmissionMode)+1], aGuardInterval[ejaNumber(a.guardInterval)+1]
        )
