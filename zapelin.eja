@@ -188,7 +188,7 @@ function ejaZmiRun(card,hash)
        cmdZip=''
       else
        cmdGet='wget -qO - '
-       cmdZip=' | gzip -d | '
+       cmdZip=' | gzip -d '
       end
       if mode < 10 then
        cmdOut=ejaSprintf('zapelinItePlay %s %s %s %s %s %s %s %s 0 10', card, mode, ejaNumber(a.frequency)/1000, ejaNumber(a.bandwidth)/1000, a.constellation, a.codeRate, a.guardInterval, a.transmissionMode)
