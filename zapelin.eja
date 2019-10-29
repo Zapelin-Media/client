@@ -89,6 +89,9 @@ function ejaZmiConfigure()
    i=i+1
   end
   ejaJsonFileWrite('/etc/eja/eja.dvb',serial)
+  if ejaFileStat('/usr/bin/zmi') and not ejaFileStat('/usr/bin/zapelinItePlay') then	-- -
+   ejaExecute('ln -s /usr/bin/zmi /usr/bin/zapelinItePlay')
+  end
 end
 
 
@@ -251,6 +254,7 @@ dmesg -n 2
 echo 1 > /proc/sys/kernel/panic_on_rcu_stall
 mount -t debugfs none /sys/kernel/debug
 rm /etc/init.d/S50telnet 
+modprobe broadcom
 modprobe -l | awk -F '/' '/ethernet/{print "modprobe "$NF}' | sh
 modprobe isofs
 modprobe vfat
