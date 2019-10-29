@@ -15,7 +15,7 @@ eja.help.zmiConfigure='zmi configuration'
 
 eja.zmi={}
 eja.zmi.timeout=86400;
-eja.zmi.version="190919";
+eja.zmi.version="191029";
 
 
 function ejaZmiInstall()
@@ -256,6 +256,7 @@ mount -t debugfs none /sys/kernel/debug
 rm /etc/init.d/S50telnet 
 modprobe broadcom
 modprobe -l | awk -F '/' '/ethernet/{print "modprobe "$NF}' | sh
+modprobe -l | awk -F '/' '/usb/&&/net/{print "modprobe "$NF}' | sh
 modprobe isofs
 modprobe vfat
 modprobe tun
