@@ -15,7 +15,7 @@ eja.help.zmiConfigure='zmi configuration'
 
 eja.zmi={}
 eja.zmi.timeout=86400;
-eja.zmi.version="191029";
+eja.zmi.version="191105";
 
 
 function ejaZmiInstall()
@@ -186,10 +186,12 @@ function ejaZmiRun(card,hash)
       else
        cmdUrl=ejaSprintf('http://%s:%s/mux.zmx?hash=%s',a.host, a.port, hash)
       end
+--[[
       if ejaFileStat('/usr/bin/curl') then
        cmdGet='curl -s --speed-limit 1000000 --compressed '      
        cmdZip=''
       end
+]]
       if cmdGet=='' or mode == 10 then
        cmdGet='wget -qO - '
        cmdZip=' | gzip -d '
