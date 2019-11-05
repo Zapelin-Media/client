@@ -4,11 +4,13 @@
 eja.lib.zmiStart='ejaZmiStart'
 eja.lib.zmiStop='ejaZmiStop'
 eja.lib.zmiInstall='ejaZmiInstall'
+eja.lib.zmiUpdate='ejaZmiUpdate'
 eja.lib.zmiConfigure='ejaZmiConfigure'
 eja.help.zmiStart='launch a zmi instance {all}'
 eja.help.zmiStop='stop a zmi instance {all}'
 eja.help.zmiCard='zmi card number {0}'
 eja.help.zmiCode='zmi card code'
+eja.help.zmiUpdate='update the Zapelin Media Client'
 eja.help.zmiInstall='install the Zapelin Media Client'
 eja.help.zmiConfigure='zmi configuration'
 
@@ -16,6 +18,12 @@ eja.help.zmiConfigure='zmi configuration'
 eja.zmi={}
 eja.zmi.timeout=86400;
 eja.zmi.version="191105";
+
+
+function ejaZmiUpdate()
+ ejaExecute('eja --update')
+ ejaExecute('eja --update https://raw.githubusercontent.com/zapelin-media/client/master/zapelin.eja')
+end
 
 
 function ejaZmiInstall()
@@ -177,24 +185,12 @@ function ejaZmiRun(card,hash)
      end
      if a and a.host and a.port then
       ejaDebug('[zmi] card %d injecting',card)
-      local cmdGet=''
-      local cmdUrl
-      local cmdZip
-      local cmdOut
+      local cmdUrl=''
+      local cmdOut=''
       if ejaString(a.proxy) ~= "" then
        cmdUrl=ejaSprintf('http://%s/proxy.zmx?host=%s&port=%s&hash=%s',a.proxy, a.host, a.port, hash)
       else
        cmdUrl=ejaSprintf('http://%s:%s/mux.zmx?hash=%s',a.host, a.port, hash)
-      end
---[[
-      if ejaFileStat('/usr/bin/curl') then
-       cmdGet='curl -s --speed-limit 1000000 --compressed '      
-       cmdZip=''
-      end
-]]
-      if cmdGet=='' or mode == 10 then
-       cmdGet='wget -qO - '
-       cmdZip=' | gzip -d '
       end
       if mode < 10 then
        cmdOut=ejaSprintf('zapelinItePlay %s %s %s %s %s %s %s %s 0 10', card, mode, ejaNumber(a.frequency)/1000, ejaNumber(a.bandwidth)/1000, a.constellation, a.codeRate, a.guardInterval, a.transmissionMode)
@@ -208,7 +204,7 @@ function ejaZmiRun(card,hash)
         aTransmissionMode[ejaNumber(a.transmissionMode)+1], aGuardInterval[ejaNumber(a.guardInterval)+1]
        )
       end
-      local cmd=ejaSprintf('%s "%s" %s | %s', cmdGet, cmdUrl, cmdZip, cmdOut)
+      local cmd=ejaSprintf('wget -qO - "%s" | gzip -d | %s', cmdUrl, cmdOut)
       ejaTrace('[zmi] cmd: %s', cmd)
       ejaExecute(cmd)
      else
