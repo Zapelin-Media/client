@@ -22,7 +22,7 @@ eja.zmi.version="191105";
 
 function ejaZmiUpdate()
  ejaExecute('eja --update')
- ejaExecute('eja --update https://raw.githubusercontent.com/zapelin-media/client/master/zapelin.eja')
+ ejaExecute('eja --update http://get.zapelin.com/zapelin.eja')
 end
 
 

@@ -3,5 +3,5 @@
 apt-get update
 apt-get install -y eja
 eja --update
-eja --install https://zapelin-media.github.io/client/zapelin.eja
+eja --install http://get.zapelin.com/zapelin.eja
 eja --zmi-install --log-level 3
