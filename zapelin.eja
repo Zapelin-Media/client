@@ -177,7 +177,7 @@ function ejaZmiRun(card,hash)
      end
      if a and a.host and a.port then
       ejaDebug('[zmi] card %d injecting',card)
-      local cmdGet
+      local cmdGet=''
       local cmdUrl
       local cmdZip
       local cmdOut
