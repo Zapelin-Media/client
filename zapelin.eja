@@ -203,7 +203,7 @@ function ejaZmiRun(card,hash)
         aTransmissionMode[ejaNumber(a.transmissionMode)+1], aGuardInterval[ejaNumber(a.guardInterval)+1]
        )
       end
-      local cmd=ejaSprintf('wget -qO - "%s" | gzip -d | %s', cmdUrl, cmdOut)
+      local cmd=ejaSprintf('(wget -qO - "%s" | gzip -d | %s)', cmdUrl, cmdOut)
       ejaTrace('[zmi] cmd: %s', cmd)
       ejaExecute(cmd)
      else
