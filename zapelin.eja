@@ -1,4 +1,4 @@
--- Copyright (C) 2019 by Ubaldo Porcheddu <ubaldo@zapelin.com>
+-- Copyright (C) 2019-2020 by Ubaldo Porcheddu <ubaldo@zapelin.com>
 
 
 eja.lib.zmiStart='ejaZmiStart'
@@ -17,7 +17,7 @@ eja.help.zmiConfigure='zmi configuration'
 
 eja.zmi={}
 eja.zmi.timeout=86400;
-eja.zmi.version="191105";
+eja.zmi.version="200204";
 
 
 function ejaZmiUpdate()
@@ -99,6 +99,7 @@ function ejaZmiConfigure()
   if ejaFileStat('/usr/bin/zmi') and not ejaFileStat('/usr/bin/zapelinItePlay') then	-- -
    ejaExecute('ln -s /usr/bin/zmi /usr/bin/zapelinItePlay')
   end
+  return serial
 end
 
 
@@ -108,6 +109,9 @@ function ejaZmiStart()
   ejaZmiRun(eja.opt.zmiCard, eja.opt.zmiCode)
  else
   local a=ejaJsonFileRead('/etc/eja/eja.dvb')
+  if not a then
+   a=ejaZmiConfigure()
+  end
   if a then
    for k,v in next,a do
     if ejaNumber(k) == 0 then
@@ -125,7 +129,7 @@ function ejaZmiStart()
     ejaSleep(100)
    end
   else
-   ejaError('Card configuration missing, please run: eja --zmi-configure') 
+   ejaError('Card configuration missing, please run with enough privileges: eja --zmi-configure') 
   end
  end
 end
@@ -242,55 +246,3 @@ function ejaZmiLogUpdate(mac)
  end
 end
 
-
-function ejaBoxZmiInit()
- if ejaString(eja.opt.logFile) == "/dev/stderr" then eja.opt.logFile="/tmp/eja.log" end
- if ejaNumber(eja.opt.logLevel) < 3 then eja.opt.logLevel=3 end
- ejaExecute([[
-dmesg -n 2
-echo 1 > /proc/sys/kernel/panic_on_rcu_stall
-mount -t debugfs none /sys/kernel/debug
-rm /etc/init.d/S50telnet 
-modprobe broadcom
-modprobe -l | awk -F '/' '/ethernet/{print "modprobe "$NF}' | sh
-modprobe -l | awk -F '/' '/usb/&&/net/{print "modprobe "$NF}' | sh
-modprobe isofs
-modprobe vfat
-modprobe tun
-modprobe brcmfmac 
-modprobe usb-it950x
-modprobe usb-it951x
-mount -o noatime,ro /dev/sda1 /mnt
-mount -o noatime,ro /dev/mmcblk0p1 /mnt
-if [ -e /mnt/eja ]; then
- cp -r /mnt/eja /etc/eja
-fi
-if [ -e /mnt/eja/client.key ]; then
- mkdir /etc/openvpn; 
- cp /mnt/eja/client.* /mnt/eja/*.crt /etc/openvpn/; 
- /etc/init.d/S60openvpn restart
-fi
-killall -9 udhcpc;
-killall -9 hostapd;
-killall -9 telnetd
-#killall -9 stunnel
-]])
- local pwd=ejaFileRead('/etc/eja/eja.pwd')
- if pwd then
-  local shadow=ejaFileRead('/etc/shadow')
-  if shadow then
-   ejaFileWrite('/etc/shadow',shadow:gsub('root%:.-\n','root:'..pwd:gsub('\n','')..':1:0:99999:7:::\n'))
-  end
- end 
- while true do
-  if ejaFileStat("/sys/class/net/eth0") then 
-   break 
-  else
-   ejaSleep(1)
-  end
- end
- ejaSleep(1)
- ejaExecute('udhcpc -f -i eth0 -t 10 -T 5 -n -q -p %s 1>/dev/null',udhcpcPid)
- ejaZmiConfigure()
- ejaZmiStart() 
-end
