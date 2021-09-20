@@ -105,7 +105,7 @@ function ejaZmiConfigure()
   end
   if i == 0 then
    serial[0]=ejaZmiSerial(0)
-   ejaInfo('No card detected, forcing rtp mode, serial: %s',v,serial[i])
+   ejaInfo('No card detected, forcing rtp mode, serial: %s',serial[i])
   end
   ejaJsonFileWrite('/etc/eja/eja.dvb',serial)
   return serial
