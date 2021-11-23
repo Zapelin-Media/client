@@ -49,10 +49,11 @@ wget -O /tmp/tsduck.hides.deb https://github.com/tsduck/hides-drivers/releases/d
 apt install -y /tmp/tsduck.hides.deb
 
 if ! /sbin/modinfo usb-it950x >/dev/null; then
- cd tmp
+ cd /tmp
  git clone https://github.com/tsduck/hides-drivers.git
  cd hides-drivers/linux-drivers/it950x_driver
  make && make install
+ rm -rf /tmp/hides-drivers
 fi
 
 wget -O /tmp/tsduck.dektec.deb https://github.com/tsduck/dektec-dkms/releases/download/v2021.09.0/dektec-dkms_2021.09.0_all.deb
