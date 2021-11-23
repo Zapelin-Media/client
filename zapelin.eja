@@ -35,6 +35,7 @@ function ejaZmiInstall()
   else
    ejaExecute([[
 apt update
+apt install -y git
 apt install -y build-essential
 
 if grep -i raspberry /proc/cpuinfo; then
@@ -46,6 +47,13 @@ apt install -y /tmp/tsduck.deb
 
 wget -O /tmp/tsduck.hides.deb https://github.com/tsduck/hides-drivers/releases/download/v6/hides-dkms_18.04.16.1w_all.deb
 apt install -y /tmp/tsduck.hides.deb
+
+if ! /sbin/modinfo usb-it950x >/dev/null; then
+ cd tmp
+ git clone https://github.com/tsduck/hides-drivers.git
+ cd hides-drivers/linux-drivers/it950x_driver
+ make && make install
+fi
 
 wget -O /tmp/tsduck.dektec.deb https://github.com/tsduck/dektec-dkms/releases/download/v2021.09.0/dektec-dkms_2021.09.0_all.deb
 apt install -y /tmp/tsduck.dektec.deb
