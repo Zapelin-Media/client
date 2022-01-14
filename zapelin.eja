@@ -37,6 +37,7 @@ function ejaZmiInstall()
 apt update
 apt install -y git
 apt install -y build-essential
+apt install -y mpv
 
 if grep -i raspberry /proc/cpuinfo; then
  wget -O /tmp/tsduck.deb https://github.com/tsduck/tsduck/releases/download/v3.28-2551/tsduck_3.28-2551.raspbian11_armhf.deb
@@ -201,6 +202,8 @@ function ejaZmiRun(card,hash)
      if mode == "" then
       if ejaString(a.rtpHost) ~= "" and ejaNumber(a.rtpPort) > 0 then
        cmdOut=ejaSprintf([[tsp -P regulate -O ip %s:%d]], a.rtpHost, a.rtpPort);
+      else
+       cmdOut=ejaSprintf([[mpv --no-terminal --no-input-terminal /dev/stdin]]);
       end
      end
      if mode == "hides" then
