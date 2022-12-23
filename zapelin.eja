@@ -207,11 +207,11 @@ function ejaZmiRun(card,hash)
       end
      end
      if mode == "hides" then
-      cmdOut=ejaSprintf([[tsp -P regulate -O %s --adapter %d --frequency %d --bandwidth %d --constellation %s --high-priority-fec %s --guard-interval  %s --transmission-mode %s]], mode, card, ejaNumber(a.frequency)*1000, ejaNumber(a.bandwidth)/1000, aConstellation[ejaNumber(a.constellation)+1], 
+      cmdOut=ejaSprintf([[tsp -O %s --adapter %d --frequency %d --bandwidth %d --constellation %s --high-priority-fec %s --guard-interval  %s --transmission-mode %s]], mode, card, ejaNumber(a.frequency)*1000, ejaNumber(a.bandwidth)/1000, aConstellation[ejaNumber(a.constellation)+1], 
 		aCodeRate[ejaNumber(a.codeRate)+1], aGuardInterval[ejaNumber(a.guardInterval)+1], aTransmissionMode[ejaNumber(a.transmissionMode)+1]);
      end
      if mode == "dektec" then
-      cmdOut=ejaSprintf([[tsp -P regulate -O %s --modulation DVB-T --device %d --frequency %d --bandwidth %d --constellation  %s --convolutional-rate  %s --guard-interval  %s --transmission-mode %s]], mode, card, ejaNumber(a.frequency)*1000, ejaNumber(a.bandwidth)/1000, aConstellation[ejaNumber(a.constellation)+1], 
+      cmdOut=ejaSprintf([[tsp -O %s --modulation DVB-T --device %d --frequency %d --bandwidth %d --constellation  %s --convolutional-rate  %s --guard-interval  %s --transmission-mode %s]], mode, card, ejaNumber(a.frequency)*1000, ejaNumber(a.bandwidth)/1000, aConstellation[ejaNumber(a.constellation)+1], 
 		aCodeRate[ejaNumber(a.codeRate)+1], aGuardInterval[ejaNumber(a.guardInterval)+1], aTransmissionMode[ejaNumber(a.transmissionMode)+1]);
      end
      if cmdOut ~= "" and cmdUrl ~= "" then
