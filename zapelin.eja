@@ -17,7 +17,7 @@ eja.help.zmiConfigure='zmi configuration';
 
 eja.zmi={};
 eja.zmi.timeout=86400;
-eja.zmi.version="221207";
+eja.zmi.version="221223";
 
 
 function ejaZmiUpdate()
