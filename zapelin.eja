@@ -13,11 +13,12 @@ eja.help.zmiCode='zmi card code';
 eja.help.zmiUpdate='update the Zapelin Media Client';
 eja.help.zmiInstall='install the Zapelin Media Client';
 eja.help.zmiConfigure='zmi configuration';
+eja.help.zmiReboot='failed attempts limit before reboot {0}'
 
 
 eja.zmi={};
 eja.zmi.timeout=86400;
-eja.zmi.version="230123";
+eja.zmi.version="230124";
 
 
 function ejaZmiUpdate()
@@ -227,7 +228,12 @@ function ejaZmiRun(card,hash)
    else
     ejaError([[[zmi] mux %d api retrieval problem]], card);
    end
-   ejaSleep(10);
+   rebootCount = ejaNumber(rebootCount) + 1
+   if ejaNumber(eja.opt.zmiReboot) > 0 and rebootCount > eja.opt.zmiReboot then
+    ejaExecute('reboot --force')
+   else
+    ejaSleep(10)
+   end
   end
  else
   ejaError([[[zmi] mux %d code missing]], card);
