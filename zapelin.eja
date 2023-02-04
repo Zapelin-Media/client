@@ -18,7 +18,7 @@ eja.help.zmiReboot='failed attempts limit before reboot {0}'
 
 eja.zmi={}
 eja.zmi.timeout=86400
-eja.zmi.version="230202"
+eja.zmi.version="230204"
 
 
 function ejaZmiUpdate()
@@ -270,7 +270,7 @@ end
 
 function ejaZmiCheckNetwork(timeout)
  check = false
- size = 1000*1000
+ size = 125*1000
  if not eja.zmi.net then
   eja.zmi.net = {}
   check = true
