@@ -17,8 +17,7 @@ eja.help.zmiReboot='failed attempts limit before reboot {0}'
 
 
 eja.zmi={}
-eja.zmi.timeout=86400
-eja.zmi.version="230204"
+eja.zmi.version="230206"
 
 
 function ejaZmiUpdate()
@@ -123,12 +122,7 @@ function ejaZmiStart()
    ejaInfo([[[zmi] log daemon start]])
    while true do 
     ejaZmiLogUpdate(mac)
-    if ejaNumber(eja.opt.zmiReboot) > 0 and not ejaZmiCheckNetwork(100) then
-     ejaError([[[zmi] not enough traffic moved, rebooting]])
-     ejaZmiReboot()
-    else
-     ejaSleep(100)
-    end
+    ejaSleep(100)
    end
   end
  end
@@ -163,7 +157,7 @@ function ejaZmiCardMatrix()
  end
  for line in io.lines('/sys/kernel/debug/usb/devices') do
   if line:lower():match('2c42.*1031') then
-   a[#a+1]='VAT-03'
+   a[#a+1]='VTK-03'
   end
  end
  return a
@@ -174,11 +168,13 @@ function ejaZmiRun(card,hash)
  local card=ejaNumber(card or eja.opt.zmiCard or 0)
  local hash=ejaString(hash or eja.opt.zmiCode)
  local mode=""
+ local tsp="tsp"
+
  if hash ~= '' then
   local cardMatrix=ejaZmiCardMatrix()
   if ejaString(cardMatrix[card+1]) == 'UT-100' then mode="hides" end
   if ejaString(cardMatrix[card+1]) == 'DTA-2111' then mode="dektec" end
-  if ejaString(cardMatrix[card+1]) == 'VAT-03' then mode="vatek" end
+  if ejaString(cardMatrix[card+1]) == 'VTK-03' then mode="vatek" end
   ejaInfo([[[zmi] starting mux %s with code %s]], card, hash)
   while true do
    local jj=ejaWebGet('http://api.zapelin.com/?zmi='..hash)
@@ -200,33 +196,39 @@ function ejaZmiRun(card,hash)
      else
       cmdUrl=ejaSprintf([[http://%s:%s/mux.zmx?hash=%s]], a.host, a.port, hash)
      end
-     if mode == "" then
-      if ejaString(a.rtpHost) ~= "" and ejaNumber(a.rtpPort) > 0 then
-       cmdOut=ejaSprintf([[tsp -P regulate -O ip %s:%d]], a.rtpHost, a.rtpPort)
-      end
+     if ejaNumber(eja.opt.zmiReboot) > 0 then
+      tsp=ejaSprintf([[tsp --timed-log -P bitrate_monitor --min 1000000 --alarm-command "killall -9 tsp #"]])
+     end
+     if mode == "" and ejaString(a.rtpHost) ~= "" and ejaNumber(a.rtpPort) > 0 then
+      cmdOut=ejaSprintf([[%s -P regulate -O ip %s:%d]], tsp, a.rtpHost, a.rtpPort)
      end
      if mode == "hides" then
-      cmdOut=ejaSprintf([[tsp -O %s --adapter %d --frequency %d --bandwidth %d --constellation %s --high-priority-fec %s --guard-interval  %s --transmission-mode %s]], 
+      cmdOut=ejaSprintf([[%s -O %s --adapter %d --frequency %d --bandwidth %d --constellation %s --high-priority-fec %s --guard-interval  %s --transmission-mode %s]], tsp,
        mode, card, ejaNumber(a.frequency)*1000, ejaNumber(a.bandwidth)/1000, aConstellation[ejaNumber(a.constellation)+1], 
        aCodeRate[ejaNumber(a.codeRate)+1], aGuardInterval[ejaNumber(a.guardInterval)+1], aTransmissionMode[ejaNumber(a.transmissionMode)+1])
      end
      if mode == "dektec" then
-      cmdOut=ejaSprintf([[tsp -O %s --modulation DVB-T --device %d --frequency %d --bandwidth %d --constellation %s --convolutional-rate %s --guard-interval %s --transmission-mode %s]], 
+      cmdOut=ejaSprintf([[%s -O %s --modulation DVB-T --device %d --frequency %d --bandwidth %d --constellation %s --convolutional-rate %s --guard-interval %s --transmission-mode %s]], tsp,
        mode, card, ejaNumber(a.frequency)*1000, ejaNumber(a.bandwidth)/1000, aConstellation[ejaNumber(a.constellation)+1], 
        aCodeRate[ejaNumber(a.codeRate)+1], aGuardInterval[ejaNumber(a.guardInterval)+1], aTransmissionMode[ejaNumber(a.transmissionMode)+1])
      end
      if mode == "vatek" then
-      cmdOut=ejaSprintf([[tsp -O %s --modulation DVB-T --device %d --frequency %d --bandwidth %d --constellation %s --convolutional-rate %s --guard-interval %s --transmission-mode %s]], 
+      cmdOut=ejaSprintf([[%s -O %s --modulation DVB-T --device %d --frequency %d --bandwidth %d --constellation %s --convolutional-rate %s --guard-interval %s --transmission-mode %s]], tsp,
        mode, card, ejaNumber(a.frequency)*1000, ejaNumber(a.bandwidth)/1000, aConstellation[ejaNumber(a.constellation)+1], 
        aCodeRate[ejaNumber(a.codeRate)+1], aGuardInterval[ejaNumber(a.guardInterval)+1], aTransmissionMode[ejaNumber(a.transmissionMode)+1])
      end
      if cmdOut ~= "" and cmdUrl ~= "" then
-      local cmd=ejaSprintf([[(wget --timeout=100 -qO - "%s" | gzip -d | %s)]], cmdUrl, cmdOut)
+      local cmd=ejaSprintf([[(wget -t 1 --timeout=30 -qO - "%s" | gzip -d | %s)]], cmdUrl, cmdOut)
       ejaTrace([[[zmi] cmd: %s]], cmd)
       ejaExecute(cmd)
      else
       ejaError([[[zmi] mux %d no mode available]], card)
-      return false
+      if ejaNumber(eja.opt.zmiReboot) > 0 then
+       ejaSleep(30)
+       ejaZmiReboot()
+      else
+       return false
+      end
      end
     else
      ejaWarn([[[zmi] mux %d api configuration empty]], card)
@@ -265,25 +267,6 @@ function ejaZmiLogUpdate(mac)
  else
   return {}
  end
-end
-
-
-function ejaZmiCheckNetwork(timeout)
- check = false
- size = 125*1000
- if not eja.zmi.net then
-  eja.zmi.net = {}
-  check = true
- end
- netDir = ejaDirTable('/sys/class/net')
- for _,dev in next, netDir do
-  rx_last = ejaNumber(eja.zmi.net[dev])
-  rx = ejaNumber(ejaFileRead('/sys/class/net/'..dev..'/statistics/rx_bytes'))
-  if rx_last > rx then check=true end
-  if (rx-rx_last) > (timeout*size) then check=true end
-  eja.zmi.net[dev] = rx
- end
- return check
 end
 
 
