@@ -17,7 +17,7 @@ eja.help.zmiReboot='failed attempts limit before reboot {0}'
 
 
 eja.zmi={}
-eja.zmi.version="230206"
+eja.zmi.version="231014"
 
 
 function ejaZmiUpdate()
@@ -36,18 +36,20 @@ function ejaZmiInstall()
    ejaExecute([[
     apt update
     apt install -y build-essential
+    apt install -y psmisc
+    apt install -y wget
 
     if grep -i raspberry /proc/cpuinfo; then
-     wget -O /tmp/tsduck.deb https://github.com/tsduck/tsduck/releases/download/v3.33-3139/tsduck_3.33-3139.raspbian11_armhf.deb
+     wget -O /tmp/tsduck.deb https://github.com/tsduck/tsduck/releases/download/v3.35-3258/tsduck_3.35-3258.raspbian12_armhf.deb
     else
-     wget -O /tmp/tsduck.deb https://github.com/tsduck/tsduck/releases/download/v3.33-3139/tsduck_3.33-3139.debian11_amd64.deb 
+     wget -O /tmp/tsduck.deb https://github.com/tsduck/tsduck/releases/download/v3.35-3258/tsduck_3.35-3258.debian12_amd64.deb 
     fi
     apt install -y /tmp/tsduck.deb
 
     wget -O /tmp/tsduck.hides.deb https://github.com/tsduck/hides-drivers/releases/download/v7/hides-dkms_18.04.16.2w_all.deb
     apt install -y /tmp/tsduck.hides.deb
 
-    wget -O /tmp/tsduck.dektec.deb https://github.com/tsduck/dektec-dkms/releases/download/v2022.12.0/dektec-dkms_2022.12.0_all.deb
+    wget -O /tmp/tsduck.dektec.deb https://github.com/tsduck/dektec-dkms/releases/download/v2023.08.0.1/dektec-dkms_2023.08.0_all.deb
     apt install -y /tmp/tsduck.dektec.deb
 
     rm -f /tmp/tsduck*.deb
@@ -59,8 +61,8 @@ function ejaZmiInstall()
   else
    ejaFileAppend('/etc/eja/eja.init','eja.opt.zmiStart=1;')
   end
- ejaSleep(30)
- ejaZmiConfigure()
+  ejaSleep(30)
+  ejaZmiConfigure()
  end
 end
 
@@ -199,8 +201,16 @@ function ejaZmiRun(card,hash)
      if ejaNumber(eja.opt.zmiReboot) > 0 then
       tsp=ejaSprintf([[tsp --timed-log -P bitrate_monitor --min 1000000 --alarm-command "killall -9 tsp #"]])
      end
-     if mode == "" and ejaString(a.rtpHost) ~= "" and ejaNumber(a.rtpPort) > 0 then
-      cmdOut=ejaSprintf([[%s -P regulate -O ip %s:%d]], tsp, a.rtpHost, a.rtpPort)
+     if mode == "" then
+      if ejaString(a.rtpHost) ~= '' and ejaNumber(a.rtpPort) > 0 then
+       cmdOut=ejaSprintf([[%s -P regulate -O ip %s:%d]], tsp, a.rtpHost, a.rtpPort)
+      else
+       map = {}
+       for _,channel in next,a.channel do
+        map[#map+1]=ejaSprintf([[ -P fork "tsp -P zap %s -O hls -l 5 -p /dev/shm/%s.m3u8 /dev/shm/stream_%s_live.ts" ]], channel.videoSid, channel.videoSid, channel.videoSid)
+       end
+       cmdOut=ejaSprintf([[%s %s]], tsp, table.concat(map))
+      end
      end
      if mode == "hides" then
       cmdOut=ejaSprintf([[%s -O %s --adapter %d --frequency %d --bandwidth %d --constellation %s --high-priority-fec %s --guard-interval  %s --transmission-mode %s]], tsp,
