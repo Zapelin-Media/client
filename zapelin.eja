@@ -17,7 +17,7 @@ eja.help.zmiReboot='failed attempts limit before reboot {0}'
 
 
 eja.zmi={}
-eja.zmi.version="231014"
+eja.zmi.version="231023"
 
 
 function ejaZmiUpdate()
@@ -91,7 +91,7 @@ function ejaZmiConfigure()
  end
  if i == 0 then
   serial[0]=ejaZmiSerial(0)
-  ejaInfo([[zmi] No card detected, forcing rtp mode, serial: %s]], serial[i])
+  ejaInfo([[[zmi] No card detected, forcing hls mode, serial: %s]], serial[i])
  end
  ejaJsonFileWrite('/etc/eja/eja.dvb', serial)
  return serial
@@ -121,7 +121,7 @@ function ejaZmiStart()
      os.exit() 
     end
    end 
-   ejaInfo([[[zmi] log daemon start]])
+   ejaInfo([[[zmi] log daemon start (%s)]], eja.zmi.version)
    while true do 
     ejaZmiLogUpdate(mac)
     ejaSleep(100)
