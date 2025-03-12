@@ -223,7 +223,7 @@ function ejaZmiRun(card,hash)
        aCodeRate[ejaNumber(a.codeRate)+1], aGuardInterval[ejaNumber(a.guardInterval)+1], aTransmissionMode[ejaNumber(a.transmissionMode)+1])
      end
      if mode == "vatek" then
-      cmdOut=ejaSprintf([[%s -O %s --modulation DVB-T --device %d --frequency %d --bandwidth %d --constellation %s --convolutional-rate %s --guard-interval %s --transmission-mode %s]], tsp,
+      cmdOut=ejaSprintf([[%s -O %s --modulation DVB-T --device %d --frequency %d --bandwidth %d --constellation %s --convolutional-rate %s --guard-interval %s --transmission-mode %s --remux passthrough]], tsp,
        mode, card, ejaNumber(a.frequency)*1000, ejaNumber(a.bandwidth)/1000, aConstellation[ejaNumber(a.constellation)+1], 
        aCodeRate[ejaNumber(a.codeRate)+1], aGuardInterval[ejaNumber(a.guardInterval)+1], aTransmissionMode[ejaNumber(a.transmissionMode)+1])
      end
