@@ -1,4 +1,4 @@
---[[lua]]-- Copyright (C) 2019-2023 by Ubaldo Porcheddu <ubaldo@zapelin.com>
+--[[lua]]-- Copyright (C) 2019-2025 by Ubaldo Porcheddu <ubaldo@zapelin.com>
 
 
 eja.lib.zmiStart='ejaZmiStart'
@@ -17,7 +17,7 @@ eja.help.zmiReboot='failed attempts limit before reboot {0}'
 
 
 eja.zmi={}
-eja.zmi.version="231023"
+eja.zmi.version="250312"
 
 
 function ejaZmiUpdate()
